@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>SlugDraw</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+
+  <body onload="main()">
+    <h1>SlugDraw</h1>
+    <h3>Awesomeness: improved UI to be more fun!<br>(colorful webpage, paintbrush cursor icon, transparent paint)</h3>
+
+    <canvas id="webgl" width="400" height="400">
+    Please use a browser that supports "canvas"
+    </canvas>
+
+    <p id="numdot"> XXX </p>
+
+    <button type="button" id="clearButton">Clear</button>
+
+    <p>
+    <h4>Colors:
+    <button type="button" id="green">Green</button>
+    <button type="button" id="red">Red</button>
+
+    <p>
+    <h4>Shapes:
+    <button type="button" id="pointButton">Point</button>
+    <button type="button" id="triButton">Triangle</button>
+    <button type="button" id="circleButton">Circle</button>
+
+    <p>
+    <h4>Sliders:
+    <div id="sliders-container">
+      Red <input type="range" min="0" max="100" value="100" class="slider" id="redSlide">
+      Green <input type="range" min="0" max="100" value="0" class="slider" id="greenSlide">
+      Blue <input type="range" min="0" max="100" value="0" class="slider" id="blueSlide">
+      Size <input type="range" min="5" max="40" value="0" class="slider" id="sizeSlide">
+      Circle Segments <input type="range" min="10" max="40" value="10" class="slider" id="segmentSlide">
+    </div>
+
+    <div id="example">
+      <img src="./example.jpg" id="example-picture" alt="Pokeball drawing" width="400" length="400">
+      <button type="button" id="example-drawing">Generate Example!</button>
+    </div>
+
+    <script src="./lib/webgl-utils.js"></script>
+    <script src="./lib/webgl-debug.js"></script>
+    <script src="./lib/cuon-utils.js"></script>
+    <script src="Triangle.js"></script>
+    <script src="Circle.js"></script>
+    <script src="Point.js"></script>
+    <script src="asg1.js"></script>
+  </body>
+</html>
