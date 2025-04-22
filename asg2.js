@@ -2,10 +2,10 @@
 // Vertex shader program
 var VSHADER_SOURCE = `
   attribute vec4 a_Position;
-  uniform float u_Size;
+  uniform mat4 u_ModelMatrix;
+  uniform mat4 u_GlobalRotation;
   void main() {
-    gl_Position = a_Position;
-    gl_PointSize = u_Size;
+    gl_Position = u_GlobalRotation * u_ModelMatrix * a_Position;
   }`
 
 // Fragment shader program
@@ -26,11 +26,20 @@ let gl;
 let a_Position;
 let u_FragColor;
 let u_Size;
+let u_ModelMatrix;
+let u_GlobalRotation;
 // Globals related UI elements
 let g_selectedColor = [1.0, 1.0, 1.0, 0.5];
 let g_selectedSize = 5;
 let g_selectedType = POINT;
 let g_selectedSegments = 10;
+let g_animalGlobalRotation = 0;
+let g_yellowAngle = 0;
+let g_magentaAngle = 0;
+var g_startTime = performance.now() / 1000.0;
+var g_seconds = performance.now() / 1000.0 - g_startTime;
+let g_yellowAnimation = false;
+let g_magentaAnimation = false;
 
 var g_shapesList = [];
 
@@ -44,6 +53,8 @@ function setupWebGL() {
     console.log('Failed to get the rendering context for WebGL');
     return;
   }
+
+  gl.enable(gl.DEPTH_TEST);
 }
 
 function connectVariablesToGLSL() {
@@ -67,37 +78,38 @@ function connectVariablesToGLSL() {
     return;
   }
 
-  // Get the storage location of u_Size
-  u_Size = gl.getUniformLocation(gl.program, 'u_Size');
-  if (!u_Size) {
-    console.log('Failed to get the storage location of u_Size');
+  // Get the storage location of u_ModelMatrix
+  u_ModelMatrix = gl.getUniformLocation(gl.program, 'u_ModelMatrix');
+  if (!u_ModelMatrix) {
+    console.log('Failed to get the storage location of u_ModelMatrix');
     return;
   }
+
+  // Get the storage location of u_GlobalRotation
+  u_GlobalRotation = gl.getUniformLocation(gl.program, 'u_GlobalRotation');
+  if (!u_GlobalRotation) {
+    console.log('Failed to get the storage location of u_GlobalRotation');
+    return;
+  }
+
+  // Set an initial value for this matrix to identity
+  var identityM = new Matrix4();
+  gl.uniformMatrix4fv(u_ModelMatrix, false, identityM.elements);
 }
 
 // Set up actions for the HTML UI elements
 function addActionsForHtmlUI() {
-  // Button Events (Shape Type)
-  document.getElementById('green').onclick = function() {g_selectedColor = [0.0, 1.0, 0.0, 0.5]; };
-  document.getElementById('red').onclick = function() {g_selectedColor = [1.0, 0.0, 0.0, 0.5]; };
-  document.getElementById("clearButton").onclick = function() { g_shapesList = []; renderAllShapes(); };
-
-  document.getElementById("pointButton").onclick = function() { g_selectedType = POINT };
-  document.getElementById("triButton").onclick = function() { g_selectedType = TRIANGLE };
-  document.getElementById("circleButton").onclick = function() { g_selectedType = CIRCLE };
-
-  // Slider Events
-  document.getElementById("redSlide").addEventListener("mouseup", function() { g_selectedColor[0] = this.value / 100; });
-  document.getElementById("greenSlide").addEventListener("mouseup", function() { g_selectedColor[1] = this.value / 100; });
-  document.getElementById("blueSlide").addEventListener("mouseup", function() { g_selectedColor[2] = this.value / 100; });
-
   // Size Slider Event
-  document.getElementById("sizeSlide").addEventListener("mouseup", function() { g_selectedSize = this.value; });
+  document.getElementById("yellowSlide").addEventListener("mousemove", function() { g_yellowAngle = this.value; renderScene(); });
+  document.getElementById("magentaSlide").addEventListener("mousemove", function() { g_magentaAngle = this.value; renderScene(); });
 
+  document.getElementById("yOnButton").onclick = function() { g_yellowAnimation = true; };
+  document.getElementById("yOffButton").onclick = function() { g_yellowAnimation = false; };
+
+  document.getElementById("mOnButton").onclick = function() { g_magentaAnimation = true; };
+  document.getElementById("mOffButton").onclick = function() { g_magentaAnimation = false; };
   // Segment Slider Event
-  document.getElementById("segmentSlide").addEventListener("mouseup", function () { g_selectedSegments = this.value; });
-
-  document.getElementById("example-drawing").addEventListener("mouseup", function () { generateExample(); });
+  document.getElementById("angleSlide").addEventListener("mousemove", function () { g_animalGlobalRotation = this.value; renderScene(); });
 }
 
 function main() {
@@ -113,15 +125,22 @@ function main() {
   canvas.onmousedown = click;
   canvas.onmousemove = function(ev) { if (ev.buttons == 1) { click(ev); }};
 
-  gl.enable(gl.BLEND);
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-
   // Specify the color for clearing <canvas>
   gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
-  // Clear <canvas>
-  gl.clear(gl.COLOR_BUFFER_BIT);
+  requestAnimationFrame(tick);
+}
+
+// Called by browser repeatedly whenever its time
+function tick() {
+  // Save the current time
+  g_seconds = performance.now() / 1000.0 - g_startTime;
+  // Update animation angles
+  updateAnimationAngles();
+  // Draw everything
+  renderScene();
+  // Tell the browser to update again when it has time
+  requestAnimationFrame(tick);
 }
 
 function click(ev) {
@@ -144,7 +163,7 @@ function click(ev) {
   g_shapesList.push(point);
 
   // Draw every shape that is supposed to be in the canvas
-  renderAllShapes();
+  renderScene();
 }
 
 // Extract the event click and return it in WebGL coordinates
@@ -159,22 +178,61 @@ function convertCoordinatesEventToGL(ev) {
   return([x, y]);
 }
 
+// Update the angles of everything if currently animated
+function updateAnimationAngles() {
+  if (g_yellowAnimation) {
+    g_yellowAngle = (45 * Math.sin(g_seconds));
+  }
+  if (g_magentaAnimation) {
+    g_magentaAngle = (45 * Math.sin(3 * g_seconds));
+  }
+}
+
 // Draw every shape that is supposed to be in the canvas
-function renderAllShapes() {
+function renderScene() {
   // Check the time at the start of this function
   var startTime = performance.now();
 
+  // Pass the matrix to u_ModelMatrix attribute
+  var globalRotMat = new Matrix4().rotate(g_animalGlobalRotation, 0, 1, 0);
+  gl.uniformMatrix4fv(u_GlobalRotation, false, globalRotMat.elements);
+
   // Clear <canvas>
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
-  var len = g_shapesList.length;
-  for (var i = 0; i < len; i++) {
-    g_shapesList[i].render();
-  } 
+  // Draw a cube
+  var body = new Cube();
+  body.color = [1, 0, 0, 1];
+  body.matrix.translate(-0.25, -0.75, 0);
+  body.matrix.rotate(-5, 1, 0, 0);
+  body.matrix.scale(0.5, 0.3, 0.5);
+  body.render();
+
+  // Draw a left arm
+  var leftArm = new Cube();
+  leftArm.color = [1, 1, 0, 1];
+  leftArm.matrix.setTranslate(0, -0.5, 0);
+  leftArm.matrix.rotate(-5, 1, 0, 0);
+  leftArm.matrix.rotate(-g_yellowAngle, 0, 0, 1);
+  var yellowCoord = new Matrix4(leftArm.matrix);
+  leftArm.matrix.scale(0.25, 0.7, 0.5);
+  leftArm.matrix.translate(-0.5, 0, 0)
+  leftArm.render();
+
+  // Test box
+  var box = new Cube();
+  box.color = [1, 0, 1, 1];
+  box.matrix = yellowCoord;
+  box.matrix.translate(0, 0.7, 0);
+  box.matrix.rotate(g_magentaAngle, 0, 0, 1);
+  box.matrix.scale(0.3, 0.3, 0.3);
+  box.matrix.translate(-0.5, 0, -0.001);
+  box.render();
 
   // Check the time at the end of the function, and show on web page
   var duration = performance.now() - startTime;
-  sendTextToHTML("numdot: " + len + " ms: " + Math.floor(duration) + " fps: " + Math.floor(10000 / duration) / 10, "numdot");
+  sendTextToHTML(" ms: " + Math.floor(duration) + " fps: " + Math.floor(10000 / duration) / 10, "numdot");
 }
 
 function sendTextToHTML(text, htmlID) {
@@ -184,44 +242,4 @@ function sendTextToHTML(text, htmlID) {
     return;
   }
   htmlElm.innerHTML = text;
-}
-
-// Triangle vertices list for Pokeball drawing
-const drawing = [
-  // Top
-  { vertices: [-0.15, 0.5, 0.15, 0.5, 0.0, 0.0], color: [1.0, 0.0, 0.0, 1.0] },
-  { vertices: [-0.4, 0.35, -0.15, 0.5, 0.0, 0.0], color: [1.0, 0.0, 0.0, 1.0] },
-  { vertices: [-0.5, 0.1, -0.4, 0.35, 0.0, 0.0], color: [1.0, 0.0, 0.0, 1.0] },
-  { vertices: [-0.5, 0.0, -0.5, 0.1, 0.0, 0.0], color: [1.0, 0.0, 0.0, 1.0] },
-  { vertices: [0.15, 0.5, 0.4, 0.35, 0.0, 0.0], color: [1.0, 0.0, 0.0, 1.0] },
-  { vertices: [0.4, 0.35, 0.5, 0.1, 0.0, 0.0], color: [1.0, 0.0, 0.0, 1.0] },
-  { vertices: [0.5, 0.1, 0.5, 0.0, 0.0, 0.0], color: [1.0, 0.0, 0.0, 1.0] },
-  // Bottom
-  { vertices: [0.15, -0.5, -0.15, -0.5, 0.0, 0.0], color: [1.0, 1.0, 1.0, 1.0] },
-  { vertices: [0.4, -0.35, 0.15, -0.5, 0.0, 0.0], color: [1.0, 1.0, 1.0, 1.0] },
-  { vertices: [0.5, -0.1, 0.4, -0.35, 0.0, 0.0], color: [1.0, 1.0, 1.0, 1.0] },
-  { vertices: [0.5, 0.0, 0.5, -0.1, 0.0, 0.0], color: [1.0, 1.0, 1.0, 1.0] },
-  { vertices: [-0.15, -0.5, -0.4, -0.35, 0.0, 0.0], color: [1.0, 1.0, 1.0, 1.0] },
-  { vertices: [-0.4, -0.35, -0.5, -0.1, 0.0, 0.0], color: [1.0, 1.0, 1.0, 1.0] },
-  { vertices: [-0.5, -0.1, -0.5, 0.0, 0.0, 0.0], color: [1.0, 1.0, 1.0, 1.0] },
-  // Middle
-  { vertices: [-0.12, -0.12, -0.12, 0.12, 0.12, 0.12], color: [0.0, 0.0, 0.0, 1.0] },
-  { vertices: [0.12, 0.12, 0.12, -0.12, -0.12, -0.12], color: [0.0, 0.0, 0.0, 1.0] },
-  { vertices: [-0.09, -0.09, -0.09, 0.09, 0.09, 0.09], color: [1.0, 1.0, 1.0, 1.0] },
-  { vertices: [0.09, 0.09, 0.09, -0.09, -0.09, -0.09], color: [1.0, 1.0, 1.0, 1.0] },
-  { vertices: [-0.5, -0.016, -0.5, 0.016, -0.09, 0.016], color: [0.0, 0.0, 0.0, 1.0] },
-  { vertices: [-0.09, -0.016, -0.09, 0.016, -0.5, -0.016], color: [0.0, 0.0, 0.0, 1.0] },
-  { vertices: [0.5, 0.016, 0.5, -0.016, 0.09, -0.016], color: [0.0, 0.0, 0.0, 1.0] },
-  { vertices: [0.09, 0.016, 0.09, -0.016, 0.5, 0.016], color: [0.0, 0.0, 0.0, 1.0] },
-]
-
-function generateExample() {
-  gl.clear(gl.COLOR_BUFFER_BIT);
-
-  for (var i = 0; i < drawing.length; i += 1) {
-    // Set triangle color
-    var rgba = drawing[i].color;
-    gl.uniform4f(u_FragColor, rgba[0], rgba[1], rgba[2], rgba[3]);
-    drawTriangle(drawing[i].vertices);
-  }
 }
