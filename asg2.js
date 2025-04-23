@@ -260,18 +260,41 @@ function renderScene() {
 
   // Draw ears
   var ear1 = new Cone();
-  ear1.color = [1, 0, 0, 1];
-  ear1.matrix.translate(-0.17, .3, -0.2);
-  ear1.matrix.rotate(20, 0, 0, 1);
+  ear1.matrix = headCoords;
+  ear1.color = [1, 1, 0, 1];
+  ear1.matrix.translate(0.07, 0.3, -0.2);
+  ear1.matrix.rotate(0, 0, 0, 1);
   ear1.matrix.scale(0.07, 0.7, 0.07);
   ear1.render();
 
   var ear2 = new Cone();
-  ear2.color = [1, 0, 0, 1];
-  ear2.matrix.translate(0.1, .3, -0.2);
-  ear2.matrix.rotate(-20, 0, 0, 1);
-  ear2.matrix.scale(0.07, 0.7, 0.07);
+  ear2.matrix = headCoords;
+  ear2.color = [1, 1, 0, 1];
+  ear2.matrix.translate(3.7, 0.005, -0.01);
+  ear2.matrix.rotate(1, 0, 0, 1);
+  ear2.matrix.scale(1, 1, 1);
   ear2.render();
+
+  // Draw nose
+  color = [1, 0, 0, 1];
+  M = headCoords;
+  M.translate(-2.3, -0.2, -2.6);
+  M.rotate(-1, 0, 0, 1);
+  M.scale(0.8, 0.05, 0.5);
+  drawCube(M, color);
+
+  // Draw eyes
+  color = [1, 0, 1, 1];
+  M.translate(-2, 2, -0.2);
+  M.rotate(-1, 0, 0, 1);
+  M.scale(1.5, 2, 1);
+  drawCube(M, color);
+
+  color = [1, 0, 0, 1];
+  M.translate(2.2, 0, -0.2);
+  M.rotate(0.5, 0, 0, 1);
+  M.scale(1, 1, 1);
+  drawCube(M, color);
 
 
   // Check the time at the end of the function, and show on web page
