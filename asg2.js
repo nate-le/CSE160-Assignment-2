@@ -35,13 +35,20 @@ let g_selectedType = POINT;
 let g_selectedSegments = 10;
 let g_animalGlobalRotation = 0;
 let g_headAngle = 0;
+let g_armAngle1 = 200;
+let g_armAngle2 = 200;
+let g_feetAngle1 = 0;
+let g_feetAngle2 = 0;
 let g_tailAngle = 120;
 let g_tail2Angle = 270;
 let g_tail3Angle = 270;
 var g_startTime = performance.now() / 1000.0;
 var g_seconds = performance.now() / 1000.0 - g_startTime;
-let g_yellowAnimation = false;
-let g_magentaAnimation = false;
+let g_animation = false;
+let g_random = false;
+let g_tailT = -0.05;
+let g_eyeS = 2;
+let cheekColor = [1, 0, 0, 1];
 
 var g_shapesList = [];
 
@@ -107,8 +114,8 @@ function addActionsForHtmlUI() {
   document.getElementById("tail3Slide").addEventListener("mousemove", function() { g_tail3Angle = this.value; renderScene(); });
   document.getElementById("headSlide").addEventListener("mousemove", function() { g_headAngle = this.value; renderScene(); });
 
-  document.getElementById("yOnButton").onclick = function() { g_yellowAnimation = true; };
-  document.getElementById("yOffButton").onclick = function() { g_yellowAnimation = false; };
+  document.getElementById("OnButton").onclick = function() { g_animation = true; };
+  document.getElementById("OffButton").onclick = function() { g_animation = false; };
 
   // Segment Slider Event
   document.getElementById("angleSlide").addEventListener("mousemove", function () { g_animalGlobalRotation = this.value; renderScene(); });
@@ -116,7 +123,7 @@ function addActionsForHtmlUI() {
   let isDragging = false;
   let lastX = 0;
 
-  canvas.addEventListener("mousedown", (ev) => { if (ev.button === 0) { isDragging = true; lastX = ev.clientX; } });
+  canvas.addEventListener("mousedown", (ev) => { if (ev.button === 0) { isDragging = true; lastX = ev.clientX; } if (ev.shiftKey && ev.button === 0) { g_random = true; } });
 
   document.addEventListener("mousemove", (ev) => { if (isDragging) { let deltaX = ev.clientX - lastX; g_animalGlobalRotation -= deltaX * 0.5; lastX = ev.clientX; renderScene(); } });
 
@@ -191,11 +198,24 @@ function convertCoordinatesEventToGL(ev) {
 
 // Update the angles of everything if currently animated
 function updateAnimationAngles() {
-  if (g_yellowAnimation) {
-    g_yellowAngle = (45 * Math.sin(g_seconds));
+  if (g_animation) {
+    g_headAngle = (15 * Math.sin(g_seconds * 2));
+    g_armAngle1 = (15 * Math.sin(g_seconds * 2)) + 200;
+    g_armAngle2 = (-15 * Math.sin(g_seconds * 2)) + 200;
+    g_feetAngle1 = (20 * Math.sin(g_seconds * 2));
+    g_feetAngle2 = (20 * Math.sin(g_seconds * 2));
+    g_tailAngle = (22.5 * Math.sin(g_seconds * 4)) + 112.5;
   }
-  if (g_magentaAnimation) {
-    g_magentaAngle = (45 * Math.sin(3 * g_seconds));
+
+  if (g_random && g_tailT < 4 && g_eyeS < 4) {
+    g_tailT += 0.02;
+    g_eyeS += 0.02;
+    cheekColor = [1, 1, 1, 1];
+  } else {
+    g_random = false;
+    g_tailT = -0.05;
+    g_eyeS = 2;
+    cheekColor = [1, 0, 0, 1];
   }
 }
 
@@ -220,10 +240,20 @@ function renderScene() {
   M.scale(0.4, 0.6, 0.4);
   drawCube(M, color);
 
+  color = [0.40, 0.26, 0.13, 1];
+  M.setTranslate(-0.235, -0.32, 0.101);
+  M.scale(0.4, 0.05, 0.001);
+  drawCube(M, color);
+
+  color = [0.40, 0.26, 0.13, 1];
+  M.setTranslate(-0.235, -0.42, 0.101);
+  M.scale(0.4, 0.05, 0.001);
+  drawCube(M, color);
+
   // Draw tail
   color = [0.40, 0.26, 0.13, 1];
   M.setIdentity();
-  M.setTranslate(-0.05, -0.4, 0.05);
+  M.setTranslate(g_tailT, -0.4, 0.05);
   M.rotate(g_tailAngle, 1, 0, 0);
   var tailCoords = new Matrix4(M);
   M.scale(0.02, 0.14, 0.05);
@@ -231,7 +261,7 @@ function renderScene() {
 
   color = [1, 1, 0, 1];
   M = tailCoords;
-  M.translate(0, 0.09  , -0.05);
+  M.translate(0, 0.09, -0.05);
   M.rotate(g_tail2Angle, 1, 0, 0);
   M.scale(0.02, 0.12, -0.05);
   drawCube(M, color);
@@ -253,7 +283,7 @@ function renderScene() {
   
   // Draw head
   M.setTranslate(-0.235, 0, 0);
-  M.rotate(g_headAngle, 1, 0, 0);
+  M.rotate(g_headAngle, 0, 1, 0);
   var headCoords = new Matrix4(M);
   M.scale(0.4, 0.4, 0.4);
   drawCube(M, color);
@@ -276,7 +306,7 @@ function renderScene() {
   ear2.render();
 
   // Draw nose
-  color = [1, 0, 0, 1];
+  color = [0, 0, 0, 1];
   M = headCoords;
   M.translate(-2.3, -0.2, -2.6);
   M.rotate(-1, 0, 0, 1);
@@ -284,18 +314,60 @@ function renderScene() {
   drawCube(M, color);
 
   // Draw eyes
-  color = [1, 0, 1, 1];
+  color = [0, 0, 0, 1];
   M.translate(-2, 2, -0.2);
   M.rotate(-1, 0, 0, 1);
-  M.scale(1.5, 2, 1);
+  M.scale(1.5, g_eyeS, 1);
   drawCube(M, color);
 
-  color = [1, 0, 0, 1];
-  M.translate(2.2, 0, -0.2);
-  M.rotate(0.5, 0, 0, 1);
+  color = [0, 0, 0, 1];
+  M.translate(2.4, 0, -0.2);
+  M.rotate(1, 0, 0, 1);
   M.scale(1, 1, 1);
   drawCube(M, color);
 
+  // Draw cheeks
+  color = cheekColor;
+  M.translate(-2.7, -1.5, 0.5);
+  M.rotate(-1, 0, 0, 1);
+  M.scale(1.2, 1.2, 1);
+  drawCube(M, color);
+
+  color = cheekColor;
+  M.translate(2.3, -0.01, 0);
+  M.rotate(1, 0, 0, 1);
+  M.scale(1, 1, 1);
+  drawCube(M, color);
+
+  // Draw feet
+  color = [1, 1, 0, 1];
+  M.setIdentity();
+  M.setTranslate(0.02, -0.55, -0.2);
+  M.rotate(g_feetAngle1, 1 ,0, 0);
+  M.scale(0.1, 0.05, 0.2);
+  drawCube(M, color);
+
+  color = [1, 1, 0, 1];
+  M.setIdentity();
+  M.setTranslate(-0.2, -0.55, -0.2);
+  M.rotate(-g_feetAngle2, 1 ,0, 0);
+  M.scale(0.1, 0.05, 0.2);
+  drawCube(M, color);
+
+  // Draw arms
+  color = [1, 1, 0, 1];
+  M.setIdentity();
+  M.setTranslate(0.16, -0.1, -0.3);
+  M.rotate(g_armAngle1, 1 , 0, 0);
+  M.scale(0.05, 0.25, 0.1);
+  drawCube(M, color);
+
+  color = [1, 1, 0, 1];
+  M.setIdentity();
+  M.setTranslate(-0.285, -0.1, -0.3);
+  M.rotate(g_armAngle2, 1 , 0, 0);
+  M.scale(0.05, 0.25, 0.1);
+  drawCube(M, color);
 
   // Check the time at the end of the function, and show on web page
   var duration = performance.now() - startTime;
