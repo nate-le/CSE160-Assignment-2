@@ -16,22 +16,15 @@
     <p id="numdot"> XXX </p>
 
     <p>
-    <h4>Shapes:
-    <button type="button" id="pointButton">Point</button>
-    <button type="button" id="triButton">Triangle</button>
-    <button type="button" id="circleButton">Circle</button>
-
+    Head <input type="range" min="-15" max="45" value="0" class="slider" id="headSlide">
     <p>
-    <h4>Sliders:
-      Magenta <input type="range" min="-45" max="45" value="0" class="slider" id="magentaSlide">
-      Animation:
-      <button type="button" id="mOnButton">ON</button>
-      <button type="button" id="mOffButton">OFF</button>
-      Yellow <input type="range" min="-45" max="45" value="0" class="slider" id="yellowSlide">
-      Animation:
+    Tail <input type="range" min="90" max="135" value="120" class="slider" id="tailSlide">
+    Tail2 <input type="range" min="260" max="280" value="270" class="slider" id="tail2Slide">
+    Animation:
       <button type="button" id="yOnButton">ON</button>
       <button type="button" id="yOffButton">OFF</button>
-      Camera Angle <input type="range" min="0" max="90" value="5" class="slider" id="angleSlide">
+    <p>
+    Camera Angle <input type="range" min="0" max="90" value="5" class="slider" id="angleSlide">
 
     <script src="./lib/webgl-utils.js"></script>
     <script src="./lib/webgl-debug.js"></script>
@@ -41,6 +34,7 @@
     <script src="Circle.js"></script>
     <script src="Cube.js"></script>
     <script src="Point.js"></script>
+    <script src="Cone.js"></script>
     <script src="asg2.js"></script>
   </body>
 </html>

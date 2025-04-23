@@ -34,8 +34,9 @@ let g_selectedSize = 5;
 let g_selectedType = POINT;
 let g_selectedSegments = 10;
 let g_animalGlobalRotation = 0;
-let g_yellowAngle = 0;
-let g_magentaAngle = 0;
+let g_headAngle = 0;
+let g_tailAngle = 120;
+let g_tail2Angle = 270;
 var g_startTime = performance.now() / 1000.0;
 var g_seconds = performance.now() / 1000.0 - g_startTime;
 let g_yellowAnimation = false;
@@ -100,16 +101,24 @@ function connectVariablesToGLSL() {
 // Set up actions for the HTML UI elements
 function addActionsForHtmlUI() {
   // Size Slider Event
-  document.getElementById("yellowSlide").addEventListener("mousemove", function() { g_yellowAngle = this.value; renderScene(); });
-  document.getElementById("magentaSlide").addEventListener("mousemove", function() { g_magentaAngle = this.value; renderScene(); });
+  document.getElementById("tailSlide").addEventListener("mousemove", function() { g_tailAngle = this.value; renderScene(); });
+  document.getElementById("tail2Slide").addEventListener("mousemove", function() { g_tail2Angle = this.value; renderScene(); });
+  document.getElementById("headSlide").addEventListener("mousemove", function() { g_headAngle = this.value; renderScene(); });
 
   document.getElementById("yOnButton").onclick = function() { g_yellowAnimation = true; };
   document.getElementById("yOffButton").onclick = function() { g_yellowAnimation = false; };
 
-  document.getElementById("mOnButton").onclick = function() { g_magentaAnimation = true; };
-  document.getElementById("mOffButton").onclick = function() { g_magentaAnimation = false; };
   // Segment Slider Event
   document.getElementById("angleSlide").addEventListener("mousemove", function () { g_animalGlobalRotation = this.value; renderScene(); });
+
+  let isDragging = false;
+  let lastX = 0;
+
+  canvas.addEventListener("mousedown", (ev) => { if (ev.button === 0) { isDragging = true; lastX = ev.clientX; } });
+
+  document.addEventListener("mousemove", (ev) => { if (isDragging) { let deltaX = ev.clientX - lastX; g_animalGlobalRotation -= deltaX * 0.5; lastX = ev.clientX; renderScene(); } });
+
+  document.addEventListener("mouseup", () => { isDragging = false; });
 }
 
 function main() {
@@ -201,34 +210,63 @@ function renderScene() {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
-  // Draw a cube
-  var body = new Cube();
-  body.color = [1, 0, 0, 1];
-  body.matrix.translate(-0.25, -0.75, 0);
-  body.matrix.rotate(-5, 1, 0, 0);
-  body.matrix.scale(0.5, 0.3, 0.5);
-  body.render();
+  let M = new Matrix4();
+  let color = [1, 1, 0, 1];
 
-  // Draw a left arm
-  var leftArm = new Cube();
-  leftArm.color = [1, 1, 0, 1];
-  leftArm.matrix.setTranslate(0, -0.5, 0);
-  leftArm.matrix.rotate(-5, 1, 0, 0);
-  leftArm.matrix.rotate(-g_yellowAngle, 0, 0, 1);
-  var yellowCoord = new Matrix4(leftArm.matrix);
-  leftArm.matrix.scale(0.25, 0.7, 0.5);
-  leftArm.matrix.translate(-0.5, 0, 0)
-  leftArm.render();
+  // Draw body
+  M.setTranslate(-0.235, -0.5, 0.1);
+  M.scale(0.4, 0.6, 0.4);
+  drawCube(M, color);
 
-  // Test box
-  var box = new Cube();
-  box.color = [1, 0, 1, 1];
-  box.matrix = yellowCoord;
-  box.matrix.translate(0, 0.7, 0);
-  box.matrix.rotate(g_magentaAngle, 0, 0, 1);
-  box.matrix.scale(0.3, 0.3, 0.3);
-  box.matrix.translate(-0.5, 0, -0.001);
-  box.render();
+  // Draw tail
+  color = [0.40, 0.26, 0.13, 1];
+  M.setIdentity();
+  M.setTranslate(-0.05, -0.4, 0.05);
+  M.rotate(g_tailAngle, 1, 0, 0);
+  M.scale(0.02, 0.14, 0.05);
+  var tailCoords = new Matrix4(M);
+  drawCube(M, color);
+
+  color = [1, 1, 0, 1];
+  M = tailCoords;
+  M.translate(0, 0.6, -1);
+  M.rotate(g_tail2Angle, 1, 0, 0);
+  M.scale(1, 3, -0.4);
+  drawCube(M, color);
+
+  M.translate(0, 1, -1);
+  M.scale(1, -0.35, 2);
+  drawCube(M, color);
+
+  M.translate(0, -2, -0.5);
+  M.scale(1, 2.8, 0.5);
+  drawCube(M, color);
+
+  M.translate(0, -0.7, 0);
+  M.scale(1, 1.2, 5.2);
+  drawCube(M, color);
+  
+  // Draw head
+  M.setTranslate(-0.235, 0, 0);
+  M.rotate(g_headAngle, 1, 0, 0);
+  M.scale(0.4, 0.4, 0.4);
+  drawCube(M, color);
+
+  // Draw ears
+  var ear1 = new Cone();
+  ear1.color = [1, 0, 0, 1];
+  ear1.matrix.translate(-0.17, .3, -0.2);
+  ear1.matrix.rotate(20, 0, 0, 1);
+  ear1.matrix.scale(0.07, 0.7, 0.07);
+  ear1.render();
+
+  var ear2 = new Cone();
+  ear2.color = [1, 0, 0, 1];
+  ear2.matrix.translate(0.1, .3, -0.2);
+  ear2.matrix.rotate(-20, 0, 0, 1);
+  ear2.matrix.scale(0.07, 0.7, 0.07);
+  ear2.render();
+
 
   // Check the time at the end of the function, and show on web page
   var duration = performance.now() - startTime;
