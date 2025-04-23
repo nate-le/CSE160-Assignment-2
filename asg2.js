@@ -37,6 +37,7 @@ let g_animalGlobalRotation = 0;
 let g_headAngle = 0;
 let g_tailAngle = 120;
 let g_tail2Angle = 270;
+let g_tail3Angle = 270;
 var g_startTime = performance.now() / 1000.0;
 var g_seconds = performance.now() / 1000.0 - g_startTime;
 let g_yellowAnimation = false;
@@ -103,6 +104,7 @@ function addActionsForHtmlUI() {
   // Size Slider Event
   document.getElementById("tailSlide").addEventListener("mousemove", function() { g_tailAngle = this.value; renderScene(); });
   document.getElementById("tail2Slide").addEventListener("mousemove", function() { g_tail2Angle = this.value; renderScene(); });
+  document.getElementById("tail3Slide").addEventListener("mousemove", function() { g_tail3Angle = this.value; renderScene(); });
   document.getElementById("headSlide").addEventListener("mousemove", function() { g_headAngle = this.value; renderScene(); });
 
   document.getElementById("yOnButton").onclick = function() { g_yellowAnimation = true; };
@@ -223,32 +225,36 @@ function renderScene() {
   M.setIdentity();
   M.setTranslate(-0.05, -0.4, 0.05);
   M.rotate(g_tailAngle, 1, 0, 0);
-  M.scale(0.02, 0.14, 0.05);
   var tailCoords = new Matrix4(M);
+  M.scale(0.02, 0.14, 0.05);
   drawCube(M, color);
 
   color = [1, 1, 0, 1];
   M = tailCoords;
-  M.translate(0, 0.6, -1);
+  M.translate(0, 0.09  , -0.05);
   M.rotate(g_tail2Angle, 1, 0, 0);
-  M.scale(1, 3, -0.4);
+  M.scale(0.02, 0.12, -0.05);
   drawCube(M, color);
 
   M.translate(0, 1, -1);
-  M.scale(1, -0.35, 2);
+  M.scale(1, -0.5, 2);
   drawCube(M, color);
 
   M.translate(0, -2, -0.5);
-  M.scale(1, 2.8, 0.5);
+  var tail2Coords = new Matrix4(M);
+  M.scale(1, 3, 0.6);
   drawCube(M, color);
 
-  M.translate(0, -0.7, 0);
-  M.scale(1, 1.2, 5.2);
+  M = tail2Coords;
+  M.translate(0, 1.2, 0);
+  M.rotate(g_tail3Angle, 1, 0, 0);
+  M.scale(1, 3.5, 3.5);
   drawCube(M, color);
   
   // Draw head
   M.setTranslate(-0.235, 0, 0);
   M.rotate(g_headAngle, 1, 0, 0);
+  var headCoords = new Matrix4(M);
   M.scale(0.4, 0.4, 0.4);
   drawCube(M, color);
 
